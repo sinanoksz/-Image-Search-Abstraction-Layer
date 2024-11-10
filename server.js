@@ -1,56 +1,69 @@
-'use strict';
-
-const express     = require('express');
-const bodyParser  = require('body-parser');
-const cors        = require('cors');
+const express = require('express');
+const mongoose = require('mongoose');
+const fetch = require('node-fetch');
 require('dotenv').config();
 
-const apiRoutes         = require('./routes/api.js');
-const fccTestingRoutes  = require('./routes/fcctesting.js');
-const runner            = require('./test-runner');
-
 const app = express();
+const port = process.env.PORT || 3000;
 
-app.use('/public', express.static(process.cwd() + '/public'));
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI);
 
-app.use(cors({origin: '*'})); //USED FOR FCC TESTING PURPOSES ONLY!
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-//Index page (static HTML)
-app.route('/')
-  .get(function (req, res) {
-    res.sendFile(process.cwd() + '/views/index.html');
-  });
-
-//For FCC testing purposes
-fccTestingRoutes(app);
-
-//Routing for API 
-apiRoutes(app);  
-    
-//404 Not Found Middleware
-app.use(function(req, res, next) {
-  res.status(404)
-    .type('text')
-    .send('Not Found');
+// Search history schema
+const SearchSchema = new mongoose.Schema({
+  term: String,
+  timestamp: { type: Date, default: Date.now }
 });
 
-//Start our server and tests!
-const listener = app.listen(process.env.PORT || 3000, function () {
-  console.log('Your app is listening on port ' + listener.address().port);
-  if(process.env.NODE_ENV==='test') {
-    console.log('Running Tests...');
-    setTimeout(function () {
-      try {
-        runner.run();
-      } catch(e) {
-          console.log('Tests are not valid:');
-          console.error(e);
+const Search = mongoose.model('Search', SearchSchema);
+
+// Routes
+app.get('/api/search/:query', async (req, res) => {
+  try {
+    const { query } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    
+    // Save search term to database
+    await Search.create({ term: query });
+
+    // Call Unsplash API
+    const response = await fetch(
+      `https://api.unsplash.com/search/photos?query=${query}&page=${page}&per_page=10`,
+      {
+        headers: {
+          'Authorization': `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`
+        }
       }
-    }, 1500);
+    );
+
+    const data = await response.json();
+
+    // Format response
+    const results = data.results.map(image => ({
+      url: image.urls.regular,
+      description: image.description || image.alt_description,
+      pageUrl: image.links.html
+    }));
+
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-module.exports = app; //for unit/functional testing
+app.get('/api/recent', async (req, res) => {
+  try {
+    const searches = await Search.find()
+      .sort({ timestamp: -1 })
+      .limit(10)
+      .select('-_id term timestamp');
+
+    res.json(searches);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
