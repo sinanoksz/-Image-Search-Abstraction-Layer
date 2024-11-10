@@ -1,29 +1,18 @@
 {
-	"name": "fcc-library",
+	"name": "image-search-abstraction-layer",
 	"version": "1.0.0",
-	"description": "boilerplate",
 	"main": "server.js",
 	"scripts": {
-		"start": "node server.js"
+		"start": "node server.js",
+		"dev": "nodemon server.js"
 	},
 	"dependencies": {
-		"body-parser": "^1.15.2",
-		"chai": "^4.2.0",
-		"chai-http": "^4.3.0",
-		"cors": "^2.8.1",
-		"dotenv": "^8.2.0",
-		"express": "^4.14.0",
-		"mocha": "^3.2.0",
-		"zombie": "^5.0.5"
+		"dotenv": "^16.0.3",
+		"express": "^4.18.2",
+		"mongoose": "^7.8.2",
+		"node-fetch": "^2.6.9"
 	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/freeCodeCamp/boilerplate-project-library"
-	},
-	"keywords": [
-		"node",
-		"hyperdev",
-		"express"
-	],
-	"license": "MIT"
+	"devDependencies": {
+		"nodemon": "^2.0.22"
+	}
 }
